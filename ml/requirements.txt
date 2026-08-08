@@ -1,0 +1,39 @@
+# Offline pipeline dependencies — feature building, training and evaluation.
+#
+# Kept separate from backend/pyproject.toml on purpose. The API serves
+# precomputed geometry from PostGIS and loads at most a small model artefact at
+# inference time; it never needs GeoPandas or a training runtime. Splitting the
+# two keeps the API image small and its cold start fast, which matters because
+# the API is the thing that must stay responsive.
+#
+# Install into a separate environment:
+#   uv venv --python 3.12 ml/.venv && uv pip install -r ml/requirements.txt
+
+# --- data handling ---
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+pyarrow>=17.0,<22.0
+
+# --- geospatial ---
+geopandas>=1.0,<2.0
+shapely>=2.0,<3.0
+pyproj>=3.6,<4.0
+rasterio>=1.3,<2.0        # DEM sampling for terrain features
+networkx>=3.3,<4.0        # road-graph connectivity for impact analysis
+
+# --- database access ---
+sqlalchemy>=2.0.36,<3.0
+psycopg[binary]>=3.2,<4.0
+
+# --- modelling ---
+# LightGBM over XGBoost here: it trains faster on the small, tabular,
+# categorical-heavy feature set this problem produces, and runs comfortably on
+# a CPU-only laptop. Nothing in the code depends on the choice — the model is
+# loaded behind PredictionService.
+scikit-learn>=1.5,<2.0
+lightgbm>=4.5,<5.0
+shap>=0.46,<1.0           # feature attributions surfaced in the API response
+joblib>=1.4,<2.0
+
+# --- external data access ---
+httpx>=0.27,<1.0

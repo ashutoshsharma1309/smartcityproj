@@ -1,0 +1,119 @@
+name: urbanpulse
+
+services:
+  postgres:
+    # The official `postgis/postgis` image publishes amd64 only, which forces
+    # QEMU emulation on Apple Silicon and makes every spatial query noticeably
+    # slower. `imresamu/postgis` is the multi-arch community build linked from
+    # the PostGIS Docker documentation and is identical in content.
+    image: imresamu/postgis:16-3.4
+    container_name: urbanpulse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-urbanpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-urbanpulse}
+      POSTGRES_DB: ${POSTGRES_DB:-urbanpulse}
+      # First boot installs the PostGIS extensions, then the entrypoint stops
+      # the temporary server. On a slow Docker volume that checkpoint can take
+      # well over pg_ctl's 60s default, after which the server is killed hard
+      # and the data directory comes up needing recovery.
+      PGCTLTIMEOUT: "300"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Probes over TCP, not the Unix socket. During initdb the entrypoint runs
+      # a temporary server that listens on the socket only, so a socket-based
+      # check reports healthy while the database is still bootstrapping and
+      # dependents then fail with "server closed the connection unexpectedly".
+      test:
+        - CMD-SHELL
+        - psql -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB} -c 'SELECT 1' || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      # Generous: first boot has to install PostGIS before it serves anything.
+      start_period: 180s
+
+  redis:
+    image: redis:7-alpine
+    container_name: urbanpulse-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: urbanpulse-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Service names, not localhost: these override whatever .env says so the
+      # containerised API always reaches its sibling containers.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    healthcheck:
+      # curl, not a python one-liner: spawning an interpreter and importing
+      # urllib costs several seconds under Docker Desktop, so the probe was
+      # timing out and reporting a healthy API as unhealthy.
+      test: ["CMD", "curl", "-fsS", "-m", "10", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 12s
+      retries: 10
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: urbanpulse-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      # Resolved by the browser, so it must be the host-visible URL rather than
+      # the compose service name.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      # Used by the Next.js server itself. The dashboard renders in a server
+      # component, and inside this container `localhost:8000` is the frontend,
+      # not the backend — so server-side fetches go via the service name.
+      API_BASE_URL_INTERNAL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: ["npm", "run", "dev"]
+
+volumes:
+  postgres_data:
+  redis_data:

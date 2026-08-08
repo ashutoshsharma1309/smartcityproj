@@ -1,0 +1,15 @@
+# The host virtualenv holds macOS binaries and must not enter a Linux image.
+.venv
+venv
+
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+
+.env
+.env.local
+
+.DS_Store

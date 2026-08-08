@@ -1,0 +1,607 @@
+You are continuing development of UrbanPulse.
+
+PHASE 3 — GEOSPATIAL INTELLIGENCE ENGINE
+
+OBJECTIVE
+
+Transform the real datasets collected in Phase 2 into a reusable geospatial intelligence layer for urban flood/waterlogging prediction.
+
+The system must be able to answer:
+
+1. WHERE is the risk?
+2. WHAT infrastructure is nearby?
+3. WHY is that location vulnerable?
+4. WHICH roads may be affected?
+5. WHAT spatial features should be passed to the ML model in Phase 4?
+
+Do NOT build the final ML prediction model yet.
+
+Do NOT generate fake geographic data.
+
+Do NOT fabricate flood-risk scores.
+
+==================================================
+1. GEOSPATIAL ARCHITECTURE
+==================================================
+
+Create a dedicated geospatial processing layer.
+
+Recommended structure:
+
+geospatial/
+├── ingestion/
+├── processing/
+├── features/
+├── spatial_queries/
+├── routing/
+├── validation/
+└── utils/
+
+Backend integration:
+
+backend/app/services/geospatial/
+
+Keep geospatial processing separate from HTTP/API code.
+
+The processing layer must be independently testable.
+
+==================================================
+2. CITY GRID / SPATIAL UNITS
+==================================================
+
+Create a spatial representation of the selected city.
+
+Use an appropriate spatial unit such as:
+
+- grid cells
+OR
+- administrative zones
+OR
+- road-connected spatial segments
+
+Prefer a grid-based representation for the first ML pipeline if the available data supports it.
+
+Each spatial unit should have:
+
+- unique ID
+- geometry
+- centroid
+- area
+- administrative zone
+- neighborhood/ward if available
+
+Do not choose an arbitrary grid resolution.
+
+Select the resolution based on:
+
+- dataset resolution
+- computational cost
+- practical urban interpretation
+
+Document the reasoning.
+
+Make grid resolution configurable.
+
+Example configuration:
+
+GRID_RESOLUTION_METERS=250
+
+Do not hardcode it throughout the codebase.
+
+==================================================
+3. COORDINATE SYSTEMS
+==================================================
+
+Handle coordinate reference systems correctly.
+
+Use:
+
+EPSG:4326
+
+for API/interchange where appropriate.
+
+Use an appropriate projected CRS for:
+
+- distance calculations
+- area calculations
+- buffering
+- spatial analysis
+
+Do NOT calculate physical distances directly using raw latitude/longitude degrees.
+
+Document every CRS transformation.
+
+==================================================
+4. ELEVATION FEATURES
+==================================================
+
+Process available elevation/topographic data.
+
+Calculate where possible:
+
+- elevation
+- local elevation percentile
+- elevation difference from surrounding cells
+- slope
+- relative terrain depression
+
+Create reusable functions.
+
+Example conceptual feature set:
+
+elevation
+slope
+local_elevation_difference
+terrain_depression_score
+
+Do not invent terrain values.
+
+If the dataset does not support a feature, mark it unavailable rather than fabricating it.
+
+==================================================
+5. ROAD NETWORK
+==================================================
+
+Process the actual road network.
+
+Create normalized road segments.
+
+For every road segment where data permits:
+
+- road ID
+- geometry
+- length
+- road type
+- nearby spatial cell
+- intersection count
+- connectivity
+- elevation statistics
+- nearby flood incidents
+
+Build a graph representation using NetworkX where useful.
+
+Nodes:
+
+- intersections
+
+Edges:
+
+- road segments
+
+Store enough information to support future:
+
+- affected-road detection
+- routing
+- alternate route calculation
+
+==================================================
+6. FLOOD / WATERLOGGING HISTORY
+==================================================
+
+Spatially join historical flood/waterlogging incidents to the city grid.
+
+For each spatial unit calculate available historical statistics.
+
+Examples:
+
+- historical incident count
+- incidents per year
+- incidents per square kilometer
+- average severity
+- maximum severity
+- most recent incident
+- recurrence frequency
+
+Do NOT create a "risk score" yet.
+
+These are historical features.
+
+The ML model will use them later.
+
+==================================================
+7. RAINFALL SPATIALIZATION
+==================================================
+
+Process rainfall/weather observations.
+
+Where multiple weather observation points exist, determine an appropriate method for mapping observations to spatial units.
+
+Possible methods:
+
+- nearest station
+- inverse distance weighting
+- interpolation
+
+Choose the method based on actual dataset coverage.
+
+Document the choice.
+
+Generate features such as:
+
+- recent rainfall
+- rainfall over configurable windows
+- cumulative rainfall
+- rainfall intensity
+- rainfall anomaly where historical baseline exists
+
+Example configurable windows:
+
+1 hour
+3 hours
+6 hours
+24 hours
+72 hours
+
+Do not calculate a window if the underlying data cannot support it.
+
+==================================================
+8. DRAINAGE / WATER FLOW PROXY
+==================================================
+
+If actual drainage network/capacity data exists, integrate it.
+
+If it does NOT exist:
+
+DO NOT INVENT DRAINAGE DATA.
+
+Instead create proxy features only from legitimate available sources.
+
+Potential legitimate proxies:
+
+- terrain slope
+- local elevation
+- land cover
+- impervious surface
+- historical waterlogging
+- distance to water bodies
+
+Clearly label proxy features.
+
+Create:
+
+docs/geospatial-limitations.md
+
+explaining what is directly measured versus inferred.
+
+==================================================
+9. LAND USE / SURFACE FEATURES
+==================================================
+
+If reliable land-use or land-cover data is available, spatially aggregate it.
+
+Potential features:
+
+- built-up percentage
+- vegetation percentage
+- water-body percentage
+- impervious-surface proxy
+- open-area percentage
+
+Use actual data.
+
+Do not fabricate land-use classifications.
+
+==================================================
+10. WATER BODIES
+==================================================
+
+Identify relevant water bodies where actual geographic data exists.
+
+For each spatial unit calculate:
+
+- distance to nearest water body
+- water-body area nearby
+- intersection/overlap where applicable
+
+Use proper spatial operations.
+
+==================================================
+11. SPATIAL FEATURE TABLE
+==================================================
+
+Create a consolidated spatial feature table.
+
+Example conceptual schema:
+
+urban_spatial_features
+
+Fields may include:
+
+spatial_unit_id
+geometry
+centroid
+elevation
+slope
+terrain_depression
+historical_flood_count
+historical_flood_frequency
+historical_flood_severity
+rainfall_1h
+rainfall_3h
+rainfall_6h
+rainfall_24h
+rainfall_72h
+built_up_ratio
+vegetation_ratio
+water_ratio
+distance_to_water
+road_density
+intersection_density
+population_density_if_available
+
+Only include features backed by actual data.
+
+The schema must be extensible.
+
+==================================================
+12. ROAD IMPACT FEATURES
+==================================================
+
+Create spatial relationships between:
+
+CITY GRID
+↕
+ROADS
+↕
+HISTORICAL INCIDENTS
+↕
+WEATHER
+↕
+INFRASTRUCTURE
+
+For each road segment calculate available features such as:
+
+- nearby historical incidents
+- incident frequency
+- average nearby elevation
+- road elevation
+- nearby rainfall
+- surrounding terrain characteristics
+- nearby water bodies
+- connectivity
+- alternate route availability
+
+These features will later be used to estimate road impact.
+
+==================================================
+13. SPATIAL QUERIES
+==================================================
+
+Implement reusable queries/functions for:
+
+- points inside city
+- incidents inside spatial unit
+- roads intersecting spatial unit
+- nearest roads
+- nearest water body
+- nearby historical incidents
+- nearby infrastructure
+- roads within a radius
+- spatial aggregation
+
+Do not duplicate spatial SQL throughout the backend.
+
+==================================================
+14. API
+==================================================
+
+Expose read-only geospatial APIs.
+
+Examples:
+
+GET /api/v1/geospatial/grid
+
+GET /api/v1/geospatial/grid/{id}
+
+GET /api/v1/geospatial/roads
+
+GET /api/v1/geospatial/roads/{id}
+
+GET /api/v1/geospatial/features/{id}
+
+GET /api/v1/geospatial/nearby
+
+Support:
+
+- bounding box
+- radius
+- spatial unit
+- pagination
+
+Do not return unnecessarily huge GeoJSON responses.
+
+==================================================
+15. MAP INTEGRATION
+==================================================
+
+Update the frontend map.
+
+Display REAL data from PostGIS.
+
+Add layers for:
+
+1. City boundary
+2. Spatial grid
+3. Roads
+4. Historical flood incidents
+5. Water bodies where available
+
+Add layer toggles.
+
+Add basic map interaction:
+
+Click a spatial cell.
+
+Display:
+
+- spatial unit ID
+- geographic location
+- historical incidents
+- elevation
+- rainfall features
+- road information
+- available feature values
+
+Do NOT show "AI risk" yet.
+
+There is no prediction model at this phase.
+
+==================================================
+16. FEATURE PIPELINE
+==================================================
+
+Create a reproducible geospatial feature-generation pipeline.
+
+Example:
+
+python -m scripts.geospatial.build_grid
+
+python -m scripts.geospatial.process_elevation
+
+python -m scripts.geospatial.process_roads
+
+python -m scripts.geospatial.process_flood_history
+
+python -m scripts.geospatial.process_weather
+
+python -m scripts.geospatial.build_features
+
+The exact command structure may be improved if needed.
+
+The important requirement is reproducibility.
+
+==================================================
+17. PERFORMANCE
+==================================================
+
+The developer laptop has limited compute.
+
+Therefore:
+
+- process data in batches where practical
+- avoid loading unnecessarily large datasets into memory
+- use PostGIS spatial indexes
+- use bounding-box filtering before expensive spatial operations
+- cache reusable transformations where appropriate
+- avoid repeatedly recalculating static geographic features
+
+Measure processing time for major pipelines.
+
+==================================================
+18. DATA LINEAGE
+==================================================
+
+For every generated feature, make it possible to determine:
+
+SOURCE DATA
+→ TRANSFORMATION
+→ FEATURE
+
+Document feature lineage.
+
+Create:
+
+docs/feature-catalog.md
+
+For each feature document:
+
+- feature name
+- source
+- transformation
+- unit
+- spatial resolution
+- temporal resolution
+- limitations
+
+==================================================
+19. TESTING
+==================================================
+
+Test:
+
+- CRS transformations
+- geometry validity
+- grid generation
+- spatial joins
+- distance calculations
+- road intersections
+- rainfall aggregation
+- historical incident aggregation
+- feature generation
+- spatial API endpoints
+
+Include edge cases:
+
+- empty geometry
+- invalid geometry
+- points outside city
+- missing values
+- duplicate geometries
+- CRS mismatch
+
+==================================================
+20. DATA INTEGRITY RULE
+
+This is extremely important.
+
+Never do:
+
+random.uniform(...)
+random coordinates
+fake rainfall
+fake elevation
+fake incidents
+fake roads
+
+just to make the visualization look complete.
+
+If a feature cannot be computed from available real data:
+
+1. leave it NULL
+2. mark it unavailable
+3. document it
+4. continue with supported features
+
+Never silently fabricate information.
+
+==================================================
+21. VERIFICATION
+==================================================
+
+After implementation:
+
+1. Run all Phase 2 ingestion pipelines.
+2. Generate spatial grid.
+3. Process geographic datasets.
+4. Build spatial features.
+5. Store features in PostGIS.
+6. Run spatial queries.
+7. Verify geometries on the map.
+8. Verify API responses.
+9. Run tests.
+10. Measure processing performance.
+11. Confirm no fake data exists.
+12. Confirm feature lineage documentation exists.
+
+Fix all errors before declaring Phase 3 complete.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Respond concisely with:
+
+1. Geospatial architecture implemented.
+2. Spatial resolution selected and why.
+3. Features successfully generated.
+4. Database tables added.
+5. APIs added.
+6. Map layers added.
+7. Processing performance.
+8. Tests and results.
+9. Missing/unavailable geospatial features.
+10. What Phase 4 will build.
+
+DO NOT IMPLEMENT PHASE 4.
+
+PHASE 3 IS COMPLETE ONLY WHEN REAL DATA HAS BEEN TRANSFORMED INTO VERIFIED, QUERYABLE GEOSPATIAL FEATURES STORED IN POSTGIS.
