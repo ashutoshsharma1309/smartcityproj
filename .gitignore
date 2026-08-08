@@ -1,0 +1,41 @@
+# Secrets and local configuration
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# Data — raw and processed datasets are fetched by scripts, never committed.
+# Only the metadata manifests describing their provenance are tracked.
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Trained model artefacts, reproduced by the training pipeline
+ml/models/*.pkl
+ml/models/*.joblib
+ml/models/*.txt
+ml/models/*.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
