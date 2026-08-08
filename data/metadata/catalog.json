@@ -1,0 +1,563 @@
+{
+  "$schema_note": [
+    "UrbanPulse dataset catalogue. This file is the single declaration of every",
+    "dataset the platform may ingest. scripts/seed/catalog.py loads it into the",
+    "`data_sources` table, and every stored record carries a foreign key to one",
+    "of these entries — so no data can exist in the warehouse without provenance.",
+    "",
+    "Every entry below was verified by actually calling the source and parsing",
+    "the response on `verified_on`. Feature counts and field lists are observed",
+    "from the real payload, not copied from documentation. Where a publisher",
+    "does not state a licence or a time period, that is recorded as such rather",
+    "than guessed.",
+    "",
+    "OpenCity resources are addressed by CKAN package and resource id, not by",
+    "download URL: the download URLs are content-addressed and change when a",
+    "publisher re-uploads, whereas the ids are stable."
+  ],
+  "schema_version": "2.0",
+  "generated_on": "2026-08-08",
+
+  "city_selection": {
+    "selected": "Chennai",
+    "selected_slug": "chennai",
+    "country_code": "IN",
+    "decided_on": "2026-08-08",
+    "decision_summary": [
+      "Chennai was selected because it is the only candidate where the *training",
+      "label* for flood risk exists as open, machine-readable, georeferenced data.",
+      "Phase 1 ended blocked on exactly this: no historical waterlogging records.",
+      "Chennai closes that gap with 192 inundation points carrying a measured",
+      "depth, plus separately published flood events for 2005, 2015 and 2020.",
+      "",
+      "The second reason is hydrological. Chennai publishes microwatershed",
+      "boundaries from the Government of India Soil and Land Use Survey. A",
+      "watershed is the physically correct unit for flood analysis, whereas a",
+      "municipal ward is an administrative artefact that cuts across catchments.",
+      "Having both lets predictions be computed on watersheds and reported on",
+      "wards, which is what a municipal user actually needs."
+    ],
+    "candidates_considered": [
+      {
+        "city": "Chennai",
+        "open_datasets_on_opencity": 153,
+        "flood_history": "STRONG — 192 inundation points with measured depth (inches); separate 2005, 2015 and 2020 (Cyclone Nivar) event datasets; 2015 inundation zone polygons; GCC stagnation locations; crowd-sourced 2015 flooding locations; flood hazard zone map; modelled flows for 5/10/25/50/100/200-year return periods.",
+        "boundaries": "GCC ward map 2022 (200 ward polygons), zone map 2022, region boundaries.",
+        "roads": "Official GCC road centreline map — 20,407 segments with road_id, road_name and length.",
+        "drainage": "GCC storm water drain (SWD) map 2023.",
+        "hydrology": "Microwatershed / catchment map (GoI Soil and Land Use Survey); waterbodies 2019; rivers; basin waterbodies.",
+        "elevation": "Open-Meteo Elevation API (Copernicus DEM GLO-90) — global, keyless.",
+        "weather": "Open-Meteo ERA5 archive and forecast — global, keyless.",
+        "traffic": "None openly available.",
+        "verdict": "SELECTED"
+      },
+      {
+        "city": "Bengaluru",
+        "open_datasets_on_opencity": 541,
+        "flood_history": "MODERATE — 70 BBMP flood-prone point locations, plus low-lying and vulnerable location layers. Presence-only: no dates and no depth, so it supports a static susceptibility label but not event-based training or validation.",
+        "boundaries": "BBMP 2023 final delimitation — 225 ward polygons.",
+        "roads": "No official centreline layer found; OpenStreetMap would be required.",
+        "drainage": "STRONG — primary (163 lines), secondary and tertiary storm water drain maps.",
+        "hydrology": "Lake/tank layers available; no published microwatershed boundaries found.",
+        "verdict": "Runner-up. Has the largest dataset count and the best drainage data, but its flood labels carry neither a date nor a severity, which caps what Phase 3 can honestly learn and makes evaluation impossible."
+      },
+      {
+        "city": "Mumbai",
+        "open_datasets_on_opencity": 67,
+        "flood_history": "NONE — a search for Mumbai flood datasets on OpenCity returned zero results.",
+        "boundaries": "Mumbai wards map (KML) available.",
+        "roads": "No official centreline layer found.",
+        "drainage": "None found for Mumbai specifically.",
+        "verdict": "Rejected. Mumbai was the Phase 1 placeholder city, but it has no open flood history, which is the one dataset the project cannot substitute or derive."
+      },
+      {
+        "city": "Hyderabad",
+        "open_datasets_on_opencity": null,
+        "flood_history": "WEAK — a single 'flooding locations in Hyderabad' point layer.",
+        "boundaries": "Ward maps (KML) available.",
+        "verdict": "Rejected. Thinner than both Chennai and Bengaluru on every axis relevant to flooding."
+      },
+      {
+        "city": "Pune",
+        "open_datasets_on_opencity": null,
+        "flood_history": "None found.",
+        "drainage": "Storm water drains (KML/KMZ) and drain coverage data available.",
+        "verdict": "Rejected. Good drainage data, no flood history."
+      }
+    ],
+    "accepted_tradeoffs": [
+      "Chennai is coastal, so storm surge and tide modulate drainage. No open tide gauge feed was found for Chennai, so tide is recorded as an unavailable dataset rather than approximated.",
+      "The GCC ward map carries no stated licence on the portal. It is used for display and aggregation, and the missing licence is recorded on the dataset entry rather than assumed to be permissive.",
+      "The inundation point depths have no timestamp. They are treated as a static flood-susceptibility label, not as a time series. This constrains Phase 3 and is documented in docs/data-quality.md."
+    ],
+    "portability": "Nothing about the pipeline is Chennai-specific. Cities are rows in the `cities` table and datasets are rows in this catalogue; adding Bengaluru means adding catalogue entries that reuse the same KML, CKAN and Open-Meteo adapters."
+  },
+
+  "datasets": [
+    {
+      "id": "gcc-ward-boundaries-2022",
+      "name": "Chennai GCC Ward Map 2022",
+      "category": "administrative_boundary",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/gcc-ward-information",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "gcc-ward-information",
+        "resource_id": "e90176d4-319a-45bd-918e-ecce4f048c4d"
+      },
+      "license": "Not specified by the publisher",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "2022 ward delimitation (single snapshot)",
+      "update_frequency": "Irregular — reissued only when wards are re-delimited",
+      "observed_feature_count": 200,
+      "fields": [
+        {"name": "name", "type": "string", "description": "Ward number as published"},
+        {"name": "id_2", "type": "string", "description": "Publisher's internal identifier"},
+        {"name": "geometry", "type": "Polygon/MultiPolygon", "description": "Ward boundary, EPSG:4326"}
+      ],
+      "limitations": [
+        "No licence declared on the portal.",
+        "Wards are identified by number only; no ward names are included in the KML.",
+        "Some wards are published as multi-part polygons and must be dissolved to MultiPolygon."
+      ],
+      "role": "Analysis and reporting zones.",
+      "adapter": "WardBoundaryAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "gcc-road-centerlines",
+      "name": "Chennai Road Centerline Map",
+      "category": "road_network",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-road-centerline-map",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-road-centerline-map",
+        "resource_id": "9bdf789d-7f92-42bd-a55c-15b18125e9e0"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "Single snapshot; publication year not stated",
+      "update_frequency": "Irregular",
+      "observed_feature_count": 20407,
+      "observed_file_size_bytes": 21364253,
+      "fields": [
+        {"name": "road_id", "type": "integer", "description": "GCC road identifier"},
+        {"name": "road_name", "type": "string", "description": "Street name"},
+        {"name": "objectid", "type": "integer", "description": "GIS object id"},
+        {"name": "st_length(shape)", "type": "float", "description": "Segment length as published; units not stated by publisher"},
+        {"name": "geometry", "type": "LineString", "description": "Road centreline, EPSG:4326"}
+      ],
+      "limitations": [
+        "No road classification (arterial/collector/local), no lane count, no speed limit, no one-way flag. OpenStreetMap is ingested alongside this layer to supply road class.",
+        "Length units are not stated by the publisher, so lengths are recomputed in PostGIS on a projected CRS rather than trusted.",
+        "20,407 placemarks contain 36,922 LineStrings — many features are multi-part and are split into individual segments on ingest."
+      ],
+      "role": "Road geometry for impact analysis.",
+      "adapter": "RoadCenterlineAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-inundation-points",
+      "name": "Chennai Inundation Points with Depth of Inundation",
+      "category": "flood_history",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-flooding-data",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-flooding-data",
+        "resource_id": "ceddf53f-03c0-4866-8ba8-5e84c8007a85"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "NOT STATED by the publisher. These are locations known to inundate, not dated incidents.",
+      "update_frequency": "Irregular",
+      "observed_feature_count": 192,
+      "observed_depth_range_inches": {"min": 5.0, "max": 60.0, "mean": 10.52},
+      "fields": [
+        {"name": "F_ID", "type": "integer", "description": "Publisher feature id"},
+        {"name": "DEPTH", "type": "float", "unit": "inches", "description": "Recorded inundation depth. Unit is inches — confirmed by the KML schema name 'chennai_flood_inundation_inches'. Converted to centimetres on ingest."},
+        {"name": "F_REMARKS", "type": "string", "description": "Free-text description, typically describing road inundation extent"},
+        {"name": "F_LATITUDE", "type": "float", "description": "Latitude as published; cross-checked against the Point geometry on ingest"},
+        {"name": "F_LONGITUDE", "type": "float", "description": "Longitude as published; cross-checked against the Point geometry on ingest"}
+      ],
+      "limitations": [
+        "CRITICAL: no timestamp. This is a spatial susceptibility label, not a time series. It cannot support 'will it flood at time T' training — only 'is this location flood-prone'. See docs/data-quality.md.",
+        "Presence-only: the dataset lists inundated locations, with no recorded non-inundated locations, so negatives must be sampled rather than observed.",
+        "Depth is a single recorded figure with no measurement method stated."
+      ],
+      "role": "Primary flood label for Phase 3.",
+      "adapter": "InundationPointAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-floods-2015-stagnation",
+      "name": "GCC Stagnation Locations in 2015",
+      "category": "flood_history",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-floods-2015-data",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-floods-2015-data",
+        "resource_id": "b5f39598-2e2d-40c5-82c3-806a1ad65c91"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "2015 — the November–December 2015 South India floods",
+      "update_frequency": "Static historical record",
+      "fields": [
+        {"name": "name", "type": "string", "description": "Location label"},
+        {"name": "geometry", "type": "Point", "description": "Stagnation location, EPSG:4326"}
+      ],
+      "limitations": [
+        "Dated to the 2015 event year only — no precise timestamp within the event.",
+        "No depth or duration recorded."
+      ],
+      "role": "Dated flood event label; supports event-based evaluation in Phase 3.",
+      "adapter": "FloodEventPointAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-floods-2020-hotspots",
+      "name": "Chennai GCC Flood Hotspots 2020",
+      "category": "flood_history",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-floods-2020-data",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-floods-2020-data",
+        "resource_id": "068cfdae-652d-47c9-9722-7c49396d8a05"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "2020 — flooding associated with Cyclone Nivar (November 2020)",
+      "update_frequency": "Static historical record",
+      "fields": [
+        {"name": "name", "type": "string", "description": "Hotspot label"},
+        {"name": "geometry", "type": "Point", "description": "Flood hotspot, EPSG:4326"}
+      ],
+      "limitations": [
+        "Event-year resolution only.",
+        "No depth or duration recorded."
+      ],
+      "role": "Second dated flood event; gives Phase 3 a temporally independent evaluation set.",
+      "adapter": "FloodEventPointAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-stormwater-drains-2023",
+      "name": "Chennai Storm Water Drains (SWD) Map 2023",
+      "category": "drainage",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-stormwater-drain-swd-maps",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-stormwater-drain-swd-maps",
+        "resource_id": "107ac467-2381-4718-9632-645560bc8360"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "2023 snapshot",
+      "update_frequency": "Irregular",
+      "fields": [
+        {"name": "name", "type": "string", "description": "Drain label where present"},
+        {"name": "geometry", "type": "LineString", "description": "Drain centreline, EPSG:4326"}
+      ],
+      "limitations": [
+        "Geometry only — no designed hydraulic capacity, cross-section or invert level. Drain capacity therefore cannot be used as a model feature; only drain density and distance-to-drain can be derived.",
+        "No condition or maintenance status."
+      ],
+      "role": "Drainage proximity and density features.",
+      "adapter": "DrainageAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-waterbodies-2019",
+      "name": "Chennai Waterbodies Map 2019",
+      "category": "hydrology",
+      "provider": "Greater Chennai Corporation (GCC)",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-waterbodies",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-waterbodies",
+        "resource_id": "6eaf5021-4188-44df-a62c-a13373ff85cd"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Greater Chennai Corporation, via OpenCity Urban Data Portal",
+      "format": "KML",
+      "geographic_coverage": "Greater Chennai Corporation area",
+      "temporal_coverage": "2019 snapshot",
+      "update_frequency": "Irregular",
+      "fields": [
+        {"name": "name", "type": "string", "description": "Waterbody name where present"},
+        {"name": "geometry", "type": "Polygon", "description": "Waterbody extent, EPSG:4326"}
+      ],
+      "limitations": [
+        "No storage capacity or bathymetry, so retention volume cannot be modelled.",
+        "2019 extents; encroachment and shrinkage since then are not reflected."
+      ],
+      "role": "Distance-to-water and water fraction features.",
+      "adapter": "WaterbodyAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "chennai-microwatersheds",
+      "name": "Chennai Microwatersheds Map",
+      "category": "hydrology",
+      "provider": "Soil and Land Use Survey of India, Government of India",
+      "publisher_platform": "OpenCity Urban Data Portal (CivicDataLab)",
+      "source_url": "https://data.opencity.in/dataset/chennai-microwatersheds-map",
+      "access": {
+        "method": "ckan",
+        "ckan_base_url": "https://data.opencity.in",
+        "package_id": "chennai-microwatersheds-map",
+        "resource_id": "7b39fba4-7d78-473c-be7d-6f7b1421e992"
+      },
+      "license": "Other (Public Domain)",
+      "license_verified": true,
+      "attribution": "Soil and Land Use Survey of India, Government of India, via OpenCity Urban Data Portal",
+      "format": "GeoJSON",
+      "geographic_coverage": "Chennai basin",
+      "temporal_coverage": "Static physical geography",
+      "update_frequency": "Static",
+      "fields": [
+        {"name": "geometry", "type": "Polygon", "description": "Microwatershed boundary, EPSG:4326"}
+      ],
+      "limitations": [
+        "Watershed delineation predates recent urban development; drainage has been altered by construction in places."
+      ],
+      "role": "Hydrologically correct analysis units, complementing administrative wards.",
+      "adapter": "WatershedAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "open-meteo-archive",
+      "name": "Open-Meteo Historical Weather API (ERA5 reanalysis)",
+      "category": "weather",
+      "provider": "Open-Meteo",
+      "publisher_platform": "Open-Meteo",
+      "source_url": "https://open-meteo.com/en/docs/historical-weather-api",
+      "access": {
+        "method": "http_api",
+        "base_url": "https://archive-api.open-meteo.com/v1/archive",
+        "requires_key": false,
+        "rate_limit_note": "Free tier is intended for non-commercial use; requests are batched per zone centroid and cached to stay well inside published limits."
+      },
+      "license": "CC-BY-4.0",
+      "license_verified": true,
+      "attribution": "Weather data by Open-Meteo.com; ERA5 reanalysis via Copernicus Climate Change Service",
+      "format": "JSON",
+      "geographic_coverage": "Global, ~11 km reanalysis grid",
+      "temporal_coverage": "1940 to approximately 5 days before present",
+      "update_frequency": "Daily",
+      "fields": [
+        {"name": "time", "type": "timestamp", "description": "Hourly, ISO 8601"},
+        {"name": "precipitation", "type": "float", "unit": "mm"},
+        {"name": "temperature_2m", "type": "float", "unit": "degC"},
+        {"name": "relative_humidity_2m", "type": "float", "unit": "percent"},
+        {"name": "wind_speed_10m", "type": "float", "unit": "m/s"},
+        {"name": "surface_pressure", "type": "float", "unit": "hPa"},
+        {"name": "soil_moisture_0_to_7cm", "type": "float", "unit": "m3/m3"}
+      ],
+      "limitations": [
+        "Reanalysis, not gauge observation. The ~11 km grid cannot resolve the convective cells that cause localised urban flooding, so intense short bursts are smoothed.",
+        "Multiple Chennai wards fall inside one grid cell, so neighbouring wards receive near-identical rainfall.",
+        "Approximately 5 days of latency behind real time."
+      ],
+      "role": "Rainfall history and antecedent-rainfall features.",
+      "adapter": "OpenMeteoArchiveAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "open-meteo-forecast",
+      "name": "Open-Meteo Forecast API",
+      "category": "weather",
+      "provider": "Open-Meteo",
+      "publisher_platform": "Open-Meteo",
+      "source_url": "https://open-meteo.com/en/docs",
+      "access": {
+        "method": "http_api",
+        "base_url": "https://api.open-meteo.com/v1/forecast",
+        "requires_key": false
+      },
+      "license": "CC-BY-4.0",
+      "license_verified": true,
+      "attribution": "Weather data by Open-Meteo.com",
+      "format": "JSON",
+      "geographic_coverage": "Global",
+      "temporal_coverage": "Up to 16 days ahead",
+      "update_frequency": "Hourly",
+      "fields": [
+        {"name": "time", "type": "timestamp"},
+        {"name": "precipitation", "type": "float", "unit": "mm"},
+        {"name": "temperature_2m", "type": "float", "unit": "degC"}
+      ],
+      "limitations": [
+        "Forecast, not observation. Rows are stored with is_forecast = true and are excluded from training sets."
+      ],
+      "role": "Inference-time rainfall input.",
+      "adapter": "OpenMeteoForecastAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "open-meteo-elevation",
+      "name": "Open-Meteo Elevation API (Copernicus DEM GLO-90)",
+      "category": "elevation",
+      "provider": "Open-Meteo, serving Copernicus DEM GLO-90 (ESA)",
+      "publisher_platform": "Open-Meteo",
+      "source_url": "https://open-meteo.com/en/docs/elevation-api",
+      "access": {
+        "method": "http_api",
+        "base_url": "https://api.open-meteo.com/v1/elevation",
+        "requires_key": false,
+        "batch_size": 100
+      },
+      "license": "CC-BY-4.0 (API); underlying Copernicus DEM under the Copernicus open licence",
+      "license_verified": true,
+      "attribution": "Elevation from Copernicus DEM GLO-90, © DLR e.V. and Airbus Defence and Space GmbH, provided under COPERNICUS by the European Union and ESA; served via Open-Meteo.com",
+      "format": "JSON",
+      "geographic_coverage": "Global, 90 m DEM",
+      "temporal_coverage": "Static",
+      "update_frequency": "Static",
+      "fields": [
+        {"name": "elevation", "type": "float", "unit": "m", "description": "Elevation above sea level at the queried coordinate"}
+      ],
+      "limitations": [
+        "90 m resolution cannot resolve street-level micro-topography, which is what determines where water actually pools.",
+        "Queried as a point grid rather than a raster, so slope is derived from sampled points and is coarser than a true DEM-derived slope.",
+        "Chennai is very flat — most of the city sits within a few metres of sea level — so elevation differences are small and sensitive to DEM error."
+      ],
+      "role": "Terrain features: elevation, relative elevation, derived slope.",
+      "adapter": "OpenMeteoElevationAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    },
+    {
+      "id": "osm-road-network",
+      "name": "OpenStreetMap road network (Overpass API)",
+      "category": "road_network",
+      "provider": "OpenStreetMap contributors",
+      "publisher_platform": "Overpass API",
+      "source_url": "https://overpass-api.de/api/interpreter",
+      "access": {
+        "method": "http_api",
+        "base_url": "https://overpass-api.de/api/interpreter",
+        "requires_key": false,
+        "rate_limit_note": "Overpass enforces per-IP slot limits; the adapter retries with backoff and downloads once, then caches to data/raw."
+      },
+      "license": "ODbL-1.0",
+      "license_verified": true,
+      "attribution": "© OpenStreetMap contributors",
+      "format": "JSON (Overpass)",
+      "geographic_coverage": "Chennai bounding box",
+      "temporal_coverage": "Live snapshot at download time",
+      "update_frequency": "Continuous upstream; re-downloaded on demand",
+      "fields": [
+        {"name": "id", "type": "integer", "description": "OSM way id"},
+        {"name": "highway", "type": "string", "description": "Road classification"},
+        {"name": "name", "type": "string"},
+        {"name": "lanes", "type": "integer"},
+        {"name": "maxspeed", "type": "string"},
+        {"name": "bridge", "type": "string"},
+        {"name": "tunnel", "type": "string"},
+        {"name": "geometry", "type": "LineString"}
+      ],
+      "limitations": [
+        "Community-maintained, so completeness and tag quality vary by area.",
+        "Ingested to supply the road classification, lane and bridge/tunnel attributes that the GCC centreline layer lacks."
+      ],
+      "role": "Road classification and connectivity attributes.",
+      "adapter": "OverpassRoadAdapter",
+      "origin": "observed",
+      "verified_on": "2026-08-08"
+    }
+  ],
+
+  "unavailable": [
+    {
+      "need": "Timestamped waterlogging incident reports",
+      "category": "flood_history",
+      "why_it_matters": "Would turn flood prediction from a static susceptibility problem into a genuine time-series forecast — predicting when, not just where.",
+      "status_checked_on": "2026-08-08",
+      "finding": "The GCC inundation and hotspot layers carry no timestamps beyond an event year. No public GCC complaint or incident API was found.",
+      "consequence": "Phase 3 trains a spatial susceptibility model. Any claim of hour-ahead forecasting would be unsupported by the data, and the API must not present one.",
+      "adapter_ready": "FloodEventPointAdapter accepts an event date, so a timestamped feed can be ingested without schema change."
+    },
+    {
+      "need": "Real-time or historical traffic volumes and speeds",
+      "category": "traffic",
+      "why_it_matters": "Would let road impact be validated against observed congestion rather than inferred from road-graph connectivity.",
+      "status_checked_on": "2026-08-08",
+      "finding": "No open traffic feed for Chennai. Commercial APIs (Google, TomTom, HERE) require paid keys and their licences restrict redistribution.",
+      "consequence": "Impact analysis reports structural road impact only, and says so. No traffic figure is generated.",
+      "adapter_ready": "TrafficDataSource is defined as an interface with no implementation; it raises rather than returning values."
+    },
+    {
+      "need": "Tide gauge observations for the Chennai coast",
+      "category": "hydrology",
+      "why_it_matters": "High tide blocks gravity drainage to the sea; rainfall coinciding with high tide is the classic severe-flooding pattern in a coastal city.",
+      "status_checked_on": "2026-08-08",
+      "finding": "INCOIS publishes tide predictions for Indian ports but not under a documented open licence with a machine-readable endpoint that could be verified.",
+      "consequence": "tide_observations remains empty. The tide feature is marked unavailable in the feature specification rather than estimated from an almanac."
+    },
+    {
+      "need": "Storm water drain hydraulic capacity",
+      "category": "drainage",
+      "why_it_matters": "Designed capacity determines how much rain a catchment absorbs before surface water accumulates.",
+      "status_checked_on": "2026-08-08",
+      "finding": "The GCC SWD map publishes geometry only — no cross-section, invert level or design capacity.",
+      "consequence": "Only drain density and distance-to-drain can be derived. Capacity is not modelled and is not invented."
+    },
+    {
+      "need": "Civic complaint / grievance records",
+      "category": "civic",
+      "why_it_matters": "Complaint volume is a useful independent signal of where flooding actually disrupts people.",
+      "status_checked_on": "2026-08-08",
+      "finding": "The Namma Chennai grievance system has no documented public API. data.gov.in hosts civic datasets but its API requires a free registered key, which cannot be provisioned non-interactively.",
+      "consequence": "The civic_incidents table and CivicIncidentAdapter exist and are exercised by tests, but no civic dataset is ingested. The DATA_GOV_IN_API_KEY setting is defined so the adapter can be enabled once a key is supplied."
+    }
+  ]
+}

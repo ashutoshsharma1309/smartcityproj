@@ -1,0 +1,132 @@
+{
+  "$comment": [
+    "Provenance manifest for UrbanPulse. This file is the only place where a",
+    "dataset may be introduced to the platform: scripts/register_data_sources.py",
+    "loads it into the `data_sources` table, and every stored observation",
+    "carries a foreign key to one of these rows.",
+    "",
+    "Licence and URL fields were transcribed from each provider's published",
+    "documentation on the date below. Re-verify them before running an",
+    "ingestion job — terms change, and attribution obligations are ours to meet.",
+    "",
+    "`origin` is the honesty flag: `observed` is measured by an external",
+    "authority, `derived` is computed by UrbanPulse from observed inputs, and",
+    "`simulated` is produced by the simulation layer and is never real-world",
+    "truth. The API and the UI surface this value directly."
+  ],
+  "recorded_on": "2026-08-08",
+  "target_city": "Mumbai, IN",
+  "datasets": [
+    {
+      "slug": "open-meteo-archive",
+      "name": "Open-Meteo Historical Weather API (ERA5 reanalysis)",
+      "provider": "Open-Meteo",
+      "kind": "weather",
+      "origin": "observed",
+      "source_url": "https://open-meteo.com/en/docs/historical-weather-api",
+      "license": "CC-BY-4.0",
+      "attribution": "Weather data by Open-Meteo.com (ERA5 reanalysis, Copernicus Climate Change Service)",
+      "description": "Hourly historical precipitation, temperature, humidity, wind and soil moisture on a reanalysis grid. Supplies the antecedent-rainfall features and the training window. No API key required.",
+      "update_interval_seconds": 86400,
+      "role": "Primary training input for rainfall features.",
+      "is_active": true
+    },
+    {
+      "slug": "open-meteo-forecast",
+      "name": "Open-Meteo Forecast API",
+      "provider": "Open-Meteo",
+      "kind": "weather",
+      "origin": "observed",
+      "source_url": "https://open-meteo.com/en/docs",
+      "license": "CC-BY-4.0",
+      "attribution": "Weather data by Open-Meteo.com",
+      "description": "Hourly precipitation forecast used at inference time. Rows are stored with is_forecast = true so forecasts are never mixed with measurements when training.",
+      "update_interval_seconds": 3600,
+      "role": "Inference-time rainfall input.",
+      "is_active": true
+    },
+    {
+      "slug": "osm-road-network",
+      "name": "OpenStreetMap road network (via Overpass API)",
+      "provider": "OpenStreetMap contributors",
+      "kind": "road_network",
+      "origin": "observed",
+      "source_url": "https://overpass-api.de/api/interpreter",
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors",
+      "description": "Road centrelines with highway class, lane count, bridge and tunnel tags. Becomes the NetworkX graph used to find severed links during impact analysis.",
+      "update_interval_seconds": 604800,
+      "role": "Road geometry and connectivity graph.",
+      "is_active": true
+    },
+    {
+      "slug": "osm-admin-boundaries",
+      "name": "OpenStreetMap administrative boundaries (via Overpass API)",
+      "provider": "OpenStreetMap contributors",
+      "kind": "administrative_boundary",
+      "origin": "observed",
+      "source_url": "https://overpass-api.de/api/interpreter",
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors",
+      "description": "Ward polygons used as the unit of analysis. Chosen over a municipal shapefile because coverage is consistent across cities, which keeps the platform portable beyond the first target city.",
+      "update_interval_seconds": 2592000,
+      "role": "Zone geometry.",
+      "is_active": true
+    },
+    {
+      "slug": "copernicus-dem-glo30",
+      "name": "Copernicus DEM GLO-30 (30 m global digital elevation model)",
+      "provider": "European Space Agency / Copernicus",
+      "kind": "elevation",
+      "origin": "observed",
+      "source_url": "https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions",
+      "license": "Copernicus DEM open licence (free use with attribution)",
+      "attribution": "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH, provided under COPERNICUS by the European Union and ESA",
+      "description": "Elevation raster from which mean and minimum elevation, slope and topographic depressions are derived per zone. Low-lying, flat zones are the strongest structural predictor of waterlogging.",
+      "update_interval_seconds": null,
+      "role": "Terrain feature derivation (static).",
+      "is_active": true
+    }
+  ],
+  "known_gaps": [
+    {
+      "need": "Historical waterlogging incident records for the target city",
+      "why_it_matters": "These are the supervised labels. Without them the risk model cannot be trained or evaluated, and no probability can honestly be reported.",
+      "status": "No authoritative open dataset identified. Municipal complaint logs are not published as open data for Mumbai.",
+      "candidate_approaches": [
+        "Request the MCGM disaster-management complaint log through a formal data request.",
+        "Derive weak labels from geotagged news and social reports, stored with origin = 'derived' and a documented extraction method.",
+        "Use a published academic flood-inundation dataset for the city if licensing permits."
+      ],
+      "blocking_phase": "Phase 3"
+    },
+    {
+      "need": "Storm-water drainage network and pumping-station capacity",
+      "why_it_matters": "Drainage capacity determines how much rainfall a zone absorbs before surface water accumulates; without it the model must infer capacity indirectly from terrain and imperviousness.",
+      "status": "Not published as open data. The drainage_assets table stays empty until a real dataset is registered.",
+      "candidate_approaches": [
+        "OpenStreetMap waterway=drain / nallah geometry as a partial proxy, clearly marked as incomplete."
+      ],
+      "blocking_phase": "Phase 3"
+    },
+    {
+      "need": "Tide gauge observations and predictions",
+      "why_it_matters": "High tide blocks gravity drainage in coastal cities; rainfall coinciding with high tide is the classic severe-waterlogging pattern.",
+      "status": "Source not yet confirmed. INCOIS publishes tide predictions for Indian ports but the access terms need checking before use.",
+      "candidate_approaches": [
+        "Confirm INCOIS tide prediction access terms.",
+        "Evaluate a commercial tide API if open access is unavailable."
+      ],
+      "blocking_phase": "Phase 3"
+    },
+    {
+      "need": "Real-time traffic speeds",
+      "why_it_matters": "Would let impact analysis be validated against observed congestion instead of inferred from road-graph connectivity alone.",
+      "status": "No open real-time feed for the target city. Impact analysis will therefore report structural road impact, not measured congestion, and must say so.",
+      "candidate_approaches": [
+        "Commercial traffic API if the project acquires a key."
+      ],
+      "blocking_phase": "Phase 4"
+    }
+  ]
+}
