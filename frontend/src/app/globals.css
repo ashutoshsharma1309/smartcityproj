@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+/*
+ * Command-centre palette: a dark, low-chroma slate ground so that risk colours
+ * (which arrive in Phase 3) are the only saturated thing on screen.
+ */
+@theme {
+  --color-ground-950: #080b12;
+  --color-ground-900: #0d1119;
+  --color-ground-850: #121822;
+  --color-ground-800: #18202c;
+  --color-ground-700: #232d3d;
+  --color-ground-600: #334054;
+
+  --color-ink-100: #e8edf5;
+  --color-ink-300: #aab6c8;
+  --color-ink-500: #6f7d93;
+
+  --color-signal-ok: #34d399;
+  --color-signal-warn: #fbbf24;
+  --color-signal-down: #f87171;
+  --color-signal-idle: #64748b;
+  --color-accent: #38bdf8;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-ground-950);
+  color: var(--color-ink-100);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* MapLibre's default control chrome is light; align it with the dark shell. */
+.maplibregl-ctrl-group {
+  background: var(--color-ground-800);
+  border: 1px solid var(--color-ground-700);
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-ground-700);
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.4);
+}
+.maplibregl-ctrl-attrib {
+  background: rgb(13 17 25 / 0.85) !important;
+  color: var(--color-ink-300);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-ink-300);
+}
+
+/* The scale bar ships with a white background and dark border, which reads as
+   a bright rectangle over the dimmed basemap. */
+.maplibregl-ctrl-scale {
+  background: rgb(13 17 25 / 0.85);
+  border-color: var(--color-ground-600);
+  color: var(--color-ink-300);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}

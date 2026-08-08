@@ -1,0 +1,14 @@
+# node_modules must never be copied from the host: the packages are built for
+# the host platform (macOS/arm64 binaries) and would silently replace the ones
+# `npm ci` installs for Linux inside the image.
+node_modules
+.next
+out
+
+.env
+.env.local
+.env.*.local
+
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo
